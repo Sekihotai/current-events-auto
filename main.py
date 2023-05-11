@@ -1,12 +1,13 @@
 from selenium import webdriver
-from typer import Typer
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import By
-from bs4 import BeautifulSoup
-import chromedriver_autoinstaller
 from selenium.webdriver.support.wait import WebDriverWait
-import time
+from typer import Typer
+from bs4 import BeautifulSoup
 import selenium.webdriver.support.expected_conditions as EC
+import chromedriver_autoinstaller
+import time
+
 
 
 def create_webdriver():
@@ -19,25 +20,33 @@ def create_webdriver():
 
 
 def find_current_event():
+    def get_most_recent_article(driver):
+        driver.get("https://www.cnn.com/politics")
+        time.sleep(2) #CHANGE FROM IMPLICIT TO ELEMENT BASED WAIT LATER
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        urls = soup.find_all("a", class_="container_lead-plus-headlines__link", href=True)
+        read_article(urls[1]['href'], driver)
+
+
+
+    def read_article(article, driver):
+        driver.get("https://cnn.com" + article)
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        article_parts = ""
+        for x in soup.find_all("p", class_="paragraph"):
+            article_parts += x.get_text()
+        if "This story has been updated with additional information." in article_parts:
+            article_parts = article_parts.replace(
+                "This story has been updated with additional information.", "")
+        talk_to_chatgpt(article_parts, driver)
+
     driver = create_webdriver()
-    # driver.get("https://www.cnn.com/POLITICS/")
-    # driver.find_element(By.XPATH, "(//h3[@class='cd__headline']//a)[1]").click
-    # driver.implicitly_wait(20)
-    driver.get(
-        "https://www.cnn.com/2023/05/10/politics/governor-bill-lee-tennessee-school-shooting/index.html")
-    soup = BeautifulSoup(driver.page_source, "html.parser")
-    article_parts = ""
-    for x in soup.find_all("p", class_="paragraph"):
-        article_parts += x.get_text()
-    if "This story has been updated with additional information." in article_parts:
-        article_parts = article_parts.replace(
-            "This story has been updated with additional information.", "")
-    talk_to_chatgpt(article_parts, driver)
+    get_most_recent_article(driver)
 
 
 def talk_to_chatgpt(article, driver):
     driver.get("https://chat.openai.com")
-    time.sleep(4)
+    time.sleep(5)
     input_field = driver.find_element(By.TAG_NAME, "textarea")
     actions = [
         {
@@ -67,10 +76,10 @@ def talk_to_chatgpt(article, driver):
     summary = driver.find_element(By.XPATH, "(//div[contains(@class,'markdown prose')]//p)[1]").text 
     opinion = driver.find_element(By.XPATH, "(//div[contains(@class,'markdown prose')]//p)[2]").text 
     question = driver.find_element(By.XPATH, "(//div[contains(@class,'markdown prose')]//p)[3]").text 
+    write_out_events(summary, opinion, question, driver)
     
 
-def write_out_events():
-    driver = create_webdriver()
+def write_out_events(summary, opinion, question, driver):
     driver.get("https://classroom.google.com/u/1")
 
 def typing_example():
