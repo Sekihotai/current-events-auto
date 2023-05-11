@@ -39,22 +39,31 @@ def talk_to_chatgpt(article, driver):
     driver.get("https://chat.openai.com")
     time.sleep(4)
     input_field = driver.find_element(By.TAG_NAME, "textarea")
-    js = f"""
-    document.getElementsByTagName('textarea')[0].value = `
-    Can you write a one paragraph summary of this article: '{article}'
-    `
-    """ 
-    driver.execute_script(js)
-    input_field.send_keys(Keys.RETURN)
-    time.sleep(10)
-    js = "document.getElementsByTagName('textarea')[0].value = 'Now write an opinion on that article from the perspective of an 11th grader without mentioning that you're an 11th grader'"
-    driver.execute_script(js)
-    input_field.send_keys(Keys.RETURN)
-    time.sleep(10)
-    js = "document.getElementsByTagName('textarea')[0].value = 'Now write a question you have about the events of the article'"
-    driver.execute_script(js)
-    input_field.send_keys(Keys.RETURN)
-    time.sleep(10)
+    actions = [
+        {
+            'script': f"""document.getElementsByTagName('textarea')[0].value = `
+                        Can you write a one paragraph summary of this article: '{article}'
+                        `""",
+            'text': Keys.RETURN,
+            'sleep': 10
+        },
+        {
+            'script': "document.getElementsByTagName('textarea')[0].value = 'Now write an opinion on that article from the perspective of an 11th grader without mentioning that you're an 11th grader'",
+            'text': Keys.RETURN,
+            'sleep': 10
+        },
+        {
+            'script': "document.getElementsByTagName('textarea')[0].value = 'Now write a question you have about the events of the article'",
+            'text': Keys.RETURN,
+            'sleep': 10
+        }
+    ]
+
+    for action in actions:
+        driver.execute_script(action['script'])
+        input_field.send_keys(action['text'])
+        time.sleep(action['sleep'])
+
     summary = driver.find_element(By.XPATH, "(//div[contains(@class,'markdown prose')]//p)[1]").text 
     opinion = driver.find_element(By.XPATH, "(//div[contains(@class,'markdown prose')]//p)[2]").text 
     question = driver.find_element(By.XPATH, "(//div[contains(@class,'markdown prose')]//p)[3]").text 
