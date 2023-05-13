@@ -18,7 +18,7 @@ Coming soon.
 
 Currently, current-events-auto is able to:
 
-- get the latest CNN article (not committed yet)
+- get the latest CNN article 
 - use the ChatGPT website in order to have it generate a one paragraph summary for said article
 
 # Planned Functionality
