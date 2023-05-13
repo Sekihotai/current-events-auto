@@ -7,6 +7,9 @@ from bs4 import BeautifulSoup
 import selenium.webdriver.support.expected_conditions as EC
 import chromedriver_autoinstaller
 import time
+import random
+import re
+import requests
 
 
 
@@ -20,58 +23,50 @@ def create_webdriver():
 
 
 def find_current_event():
-    def get_most_recent_article(driver):
-        driver.get("https://www.cnn.com/politics")
-        time.sleep(2) #CHANGE FROM IMPLICIT TO ELEMENT BASED WAIT LATER
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        urls = soup.find_all("a", class_="container_lead-plus-headlines__link", href=True)
-        read_article(urls[1]['href'], driver)
+    def get_most_recent_article():
+        try:
+            r = requests.get("https://cnn.com/politics")
+        except requests.exceptions.RequestException as e:  
+            raise SystemExit(e)
+        else:
+            soup = BeautifulSoup(r.text, "html.parser")
+            urls = soup.find_all("a", class_="container_lead-plus-headlines__link", href=True)
+            read_article(urls[1]['href'])
 
 
 
-    def read_article(article, driver):
-        driver.get("https://cnn.com" + article)
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        article_parts = ""
-        for x in soup.find_all("p", class_="paragraph"):
-            article_parts += x.get_text()
-        if "This story has been updated with additional information." in article_parts:
-            article_parts = article_parts.replace(
-                "This story has been updated with additional information.", "")
-        talk_to_chatgpt(article_parts, driver)
+    def read_article(article):
+        try:
+            r = requests.get(f'https://cnn.com{article}')
+        except requests.exceptions.RequestException as e:
+            raise SystemExit(e)
+        else:
+            soup = BeautifulSoup(r, "html.parser")
+            article_parts = """Write a one paragraph summary of this article: '"""
+            for x in soup.find_all("p", class_="paragraph"):
+                article_parts += x.get_text()
+            if "This story has been updated with additional information." in article_parts:
+                article_parts = article_parts.replace(
+                    "This story has been updated with additional information.", "")
+            article_parts += """'"""
+            cleaned_text = re.sub('\s+', ' ', article_parts).strip()
+            single_line_text = re.sub('(?<=[.!?])\s+(?=[A-Z])', ' ', cleaned_text)
+            talk_to_chatgpt(single_line_text)
 
-    driver = create_webdriver()
-    get_most_recent_article(driver)
+    get_most_recent_article()
 
 
 def talk_to_chatgpt(article, driver):
     driver.get("https://chat.openai.com")
-    time.sleep(5)
+    time.sleep(2)
     input_field = driver.find_element(By.TAG_NAME, "textarea")
-    actions = [
-        {
-            'script': f"""document.getElementsByTagName('textarea')[0].value = `
-                        Can you write a one paragraph summary of this article: '{article}'
-                        `""",
-            'text': Keys.RETURN,
-            'sleep': 10
-        },
-        {
-            'script': "document.getElementsByTagName('textarea')[0].value = 'Now write an opinion on that article from the perspective of an 11th grader without mentioning that you're an 11th grader'",
-            'text': Keys.RETURN,
-            'sleep': 10
-        },
-        {
-            'script': "document.getElementsByTagName('textarea')[0].value = 'Now write a question you have about the events of the article'",
-            'text': Keys.RETURN,
-            'sleep': 10
-        }
-    ]
+    for char in article:
+        driver.find_element(By.XPATH,'//*[@id="__next"]/div[2]/div[2]/div/main/div[3]/form/div/div[2]/textarea').send_keys(char)
+        time.sleep(random.uniform(0.01, 0.03))
 
-    for action in actions:
-        driver.execute_script(action['script'])
-        input_field.send_keys(action['text'])
-        time.sleep(action['sleep'])
+
+
+    time.sleep(100)
 
     summary = driver.find_element(By.XPATH, "(//div[contains(@class,'markdown prose')]//p)[1]").text 
     opinion = driver.find_element(By.XPATH, "(//div[contains(@class,'markdown prose')]//p)[2]").text 
@@ -80,7 +75,7 @@ def talk_to_chatgpt(article, driver):
     
 
 def write_out_events(summary, opinion, question, driver):
-    driver.get("https://classroom.google.com/u/1")
+    driver.get("https://classroom.google.com/u/1/c/NDg4OTcyNTcwNzI4/sp/MjIyODEzODc2/all")
 
 def typing_example():
     driver = webdriver.Chrome()
@@ -92,5 +87,16 @@ def typing_example():
     ty = Typer(accuracy = 0.90, correction_chance = 0.50, typing_delay = (0.04, 0.08), distance = 2)
     ty.send(element, text)
 
+def scrape_assignments_test():
+    driver = create_webdriver()
+    driver.get("https://classroom.google.com/u/1/c/NDg4OTcyNTcwNzI4/sp/MjIyODEzODc2/all")
+    time.sleep(2)
+    soup = BeautifulSoup(driver.page_source, "html.parser")
+    html = soup.prettify()
+    with open("output1.html", "w", encoding='utf-8') as file:
+        file.write(str(html))
+
 chromedriver_autoinstaller.install()
 find_current_event()
+#scrape_assignments_test()
+
